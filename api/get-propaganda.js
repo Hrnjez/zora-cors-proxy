@@ -1,31 +1,25 @@
-// BACKEND FILE: /pages/api/zora-marketcap.js
-// Copy this file to your Vercel project at: pages/api/zora-marketcap.js
+// BACKEND FILE: /pages/api/get-propaganda.js
+// Copy this to your Vercel project at: pages/api/get-propaganda.js
 
 import { getProfile, setApiKey } from "@zoralabs/coins-sdk";
 
 /**
- * =========================
  * Config
- * =========================
  */
 const ALLOWED_ORIGINS = [
-  "https://app-landing-page-da9939-9d27738bf8d68dc.webflow.io",
-  "https://app.zora.co",
-  "https://app-landing-page-da9939.webflow.io",
-  // Add your production domains here
+  "https://propaganda-747205.webflow.io/",
+  "http://localhost:3000", // for testing
 ];
 
-const TARGET_HANDLE = "propaganda";  // The profile to track
-const TIMEOUT_MS = 8000;             // API call timeout
-const RETRIES = 2;                   // Retry attempts
-const BACKOFF_BASE_MS = 250;         // Exponential backoff base
-const CACHE_TTL_MS = 30_000;         // 30s cache (aggressive for high traffic)
-const STALE_WHILE_REVALIDATE_MS = 60_000; // Serve stale data while fetching fresh
+const TARGET_HANDLE = "propaganda";
+const TIMEOUT_MS = 8000;
+const RETRIES = 2;
+const BACKOFF_BASE_MS = 250;
+const CACHE_TTL_MS = 30_000; // 30s cache
+const STALE_WHILE_REVALIDATE_MS = 60_000; // 60s stale
 
 /**
- * =========================
- * In-memory cache with stale-while-revalidate
- * =========================
+ * In-memory cache
  */
 let cache = {
   data: null,
@@ -36,9 +30,7 @@ let cache = {
 };
 
 /**
- * =========================
  * Helpers
- * =========================
  */
 function allowCors(req, res) {
   const origin = req.headers.origin;
@@ -67,7 +59,7 @@ async function withTimeout(promise, ms) {
   }
 }
 
-async function withRetry(fn, { retries = RETRIES, label = "op" } = {}) {
+async function withRetry(fn, { retries = RETRIES } = {}) {
   let attempt = 0;
   while (true) {
     try {
@@ -82,9 +74,7 @@ async function withRetry(fn, { retries = RETRIES, label = "op" } = {}) {
 }
 
 /**
- * =========================
  * Fetch market cap with smart caching
- * =========================
  */
 async function fetchMarketCap() {
   const now = Date.now();
@@ -94,9 +84,8 @@ async function fetchMarketCap() {
     return { data: cache.data, source: "cache-fresh" };
   }
 
-  // Stale-while-revalidate: serve stale, trigger background refresh
+  // Stale-while-revalidate
   if (cache.data && cache.staleUntil > now) {
-    // Start background revalidation (only if not already in progress)
     if (!cache.isRevalidating) {
       cache.isRevalidating = true;
       cache.revalidationPromise = (async () => {
@@ -114,8 +103,7 @@ async function fetchMarketCap() {
     return { data: cache.data, source: "cache-stale" };
   }
 
-  // Cache miss or expired: fetch fresh data
-  // If revalidation is in progress, wait for it
+  // Wait for revalidation if in progress
   if (cache.revalidationPromise) {
     await cache.revalidationPromise;
     return { data: cache.data, source: "cache-revalidated" };
@@ -129,8 +117,7 @@ async function fetchMarketCap() {
 
 async function fetchFromZora() {
   const resp = await withRetry(
-    () => withTimeout(getProfile({ identifier: TARGET_HANDLE }), TIMEOUT_MS),
-    { label: `getProfile:${TARGET_HANDLE}` }
+    () => withTimeout(getProfile({ identifier: TARGET_HANDLE }), TIMEOUT_MS)
   );
 
   const profile = resp?.data?.profile;
@@ -138,7 +125,7 @@ async function fetchFromZora() {
     throw new Error("Profile not found");
   }
 
-  // Extract market cap - adjust path based on Zora SDK response structure
+  // Extract market cap
   const marketCap = profile.marketCap || profile.coin?.marketCap || null;
   const symbol = profile.symbol || profile.coin?.symbol || null;
   const price = profile.price || profile.coin?.price || null;
@@ -164,18 +151,13 @@ function updateCache(data) {
 }
 
 /**
- * =========================
  * Handler
- * =========================
  */
 export default async function handler(req, res) {
   allowCors(req, res);
 
-  // Aggressive edge caching with stale-while-revalidate
-  res.setHeader(
-    "Cache-Control",
-    "public, s-maxage=30, stale-while-revalidate=60"
-  );
+  // Edge caching
+  res.setHeader("Cache-Control", "public, s-maxage=30, stale-while-revalidate=60");
 
   if (req.method === "OPTIONS" || req.method === "HEAD") {
     return res.status(204).end();
@@ -205,14 +187,13 @@ export default async function handler(req, res) {
       meta: {
         source: result.source,
         durationMs,
-        cacheTtlMs: CACHE_TTL_MS,
         handle: TARGET_HANDLE,
       },
     });
   } catch (err) {
     console.error("Market cap fetch error:", err);
     
-    // If we have stale data, serve it even on error
+    // Serve stale data on error
     if (cache.data) {
       return res.status(200).json({
         success: true,
@@ -220,7 +201,6 @@ export default async function handler(req, res) {
         meta: {
           source: "cache-error-fallback",
           error: err.message,
-          handle: TARGET_HANDLE,
         },
       });
     }
