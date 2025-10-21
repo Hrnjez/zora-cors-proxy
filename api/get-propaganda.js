@@ -124,16 +124,11 @@ async function fetchFromZora() {
     throw new Error("Profile not found");
   }
 
-  // Extract market cap
-  const marketCap = profile.marketCap || profile.coin?.marketCap || null;
-  const symbol = profile.symbol || profile.coin?.symbol || null;
-  const price = profile.price || profile.coin?.price || null;
-
+  // Return the entire profile object like the working example
+  // Let the frontend extract what it needs
   return {
     handle: TARGET_HANDLE,
-    marketCap,
-    symbol,
-    price,
+    profile: profile,  // Pass through the entire profile
     timestamp: Date.now(),
   };
 }
