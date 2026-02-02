@@ -11,7 +11,7 @@ const ALLOWED_ORIGINS = [
   "https://www.propaganda.now"
 ];
 
-const TARGET_HANDLE = "0xfE9eDe4478AD200a2186175a81f9CE9F0E679270";
+const TARGET_HANDLE = "propaganda";
 const TIMEOUT_MS = 8000;
 const RETRIES = 2;
 const BACKOFF_BASE_MS = 250;
@@ -116,14 +116,9 @@ async function fetchMarketCap() {
 }
 
 async function fetchFromZora() {
-  // Try different identifier formats
-  const identifiers = [
-    TARGET_HANDLE,                           // Current: 0xfE9e...
-    TARGET_HANDLE.toLowerCase(),             // lowercase
-    { address: TARGET_HANDLE },              // Object format
-    { handle: TARGET_HANDLE },               // Named parameter
-  ];
-
+  // Try handle first, then address as fallback
+  const identifiers = ["propaganda", "@propaganda", TARGET_HANDLE];
+  
   let lastError;
   for (const identifier of identifiers) {
     try {
@@ -133,20 +128,20 @@ async function fetchFromZora() {
       
       const profile = resp?.data?.profile;
       if (profile) {
-        console.log('Success with identifier:', identifier);
+        console.log('✓ Success with identifier:', identifier);
         return {
-          handle: TARGET_HANDLE,
+          handle: identifier,
           profile: profile,
           timestamp: Date.now(),
         };
       }
     } catch (e) {
       lastError = e;
-      console.log('Failed with identifier:', identifier, e.message);
+      console.log('✗ Failed with:', identifier);
     }
   }
   
-  throw lastError || new Error("Profile not found with any identifier format");
+  throw lastError || new Error("Profile not found");
 }
 
 function updateCache(data) {
