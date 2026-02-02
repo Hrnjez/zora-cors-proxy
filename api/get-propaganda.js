@@ -116,32 +116,33 @@ async function fetchMarketCap() {
 }
 
 async function fetchFromZora() {
-  // Try handle first, then address as fallback
-  const identifiers = ["propaganda", "@propaganda", TARGET_HANDLE];
+  console.log('Fetching profile for:', TARGET_HANDLE);
   
-  let lastError;
-  for (const identifier of identifiers) {
-    try {
-      const resp = await withRetry(
-        () => withTimeout(getProfile({ identifier }), TIMEOUT_MS)
-      );
-      
-      const profile = resp?.data?.profile;
-      if (profile) {
-        console.log('✓ Success with identifier:', identifier);
-        return {
-          handle: identifier,
-          profile: profile,
-          timestamp: Date.now(),
-        };
-      }
-    } catch (e) {
-      lastError = e;
-      console.log('✗ Failed with:', identifier);
-    }
+  const resp = await withRetry(
+    () => withTimeout(getProfile({ identifier: TARGET_HANDLE }), TIMEOUT_MS)
+  );
+
+  console.log('SDK response:', JSON.stringify(resp, null, 2));
+
+  // Try multiple possible response structures (v0.3.1 vs v0.4.3)
+  const profile = 
+    resp?.data?.profile ||     // v0.3.1 structure
+    resp?.profile ||           // Possible v0.4.3 structure
+    resp?.data ||              // Another possible structure
+    resp;                      // Direct response
+
+  if (!profile || (typeof profile === 'object' && Object.keys(profile).length === 0)) {
+    console.error('Profile not found. Full response:', resp);
+    throw new Error("Profile not found");
   }
-  
-  throw lastError || new Error("Profile not found");
+
+  console.log('Profile extracted successfully');
+
+  return {
+    handle: TARGET_HANDLE,
+    profile: profile,
+    timestamp: Date.now(),
+  };
 }
 
 function updateCache(data) {
