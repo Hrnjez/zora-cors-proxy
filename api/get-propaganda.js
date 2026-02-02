@@ -160,8 +160,6 @@ function updateCache(data) {
  */
 export default async function handler(req, res) {
   allowCors(req, res);
-
-  // Edge caching
   res.setHeader("Cache-Control", "public, s-maxage=30, stale-while-revalidate=60");
 
   if (req.method === "OPTIONS" || req.method === "HEAD") {
@@ -175,6 +173,7 @@ export default async function handler(req, res) {
   try {
     const ZORA_API_KEY = process.env.ZORA_API_KEY;
     if (!ZORA_API_KEY) {
+      console.error("ZORA_API_KEY not set");  // Add logging
       return res.status(500).json({ 
         error: "Server misconfiguration",
         message: "ZORA_API_KEY not set"
@@ -197,6 +196,8 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error("Market cap fetch error:", err);
+    console.error("Error stack:", err.stack);  // Add full stack trace
+    console.error("Error details:", JSON.stringify(err, null, 2));  // Add error details
     
     // Serve stale data on error
     if (cache.data) {
@@ -214,6 +215,7 @@ export default async function handler(req, res) {
       success: false,
       error: "Failed to fetch market cap",
       message: err?.message || String(err),
+      stack: err?.stack,  // Include stack in response for debugging
     });
   }
 }
