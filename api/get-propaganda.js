@@ -11,7 +11,7 @@ const ALLOWED_ORIGINS = [
   "https://www.propaganda.now"
 ];
 
-const TARGET_HANDLE = "propaganda";
+const TARGET_HANDLE = "0xfE9eDe4478AD200a2186175a81f9CE9F0E679270";
 const TIMEOUT_MS = 8000;
 const RETRIES = 2;
 const BACKOFF_BASE_MS = 250;
