@@ -8,7 +8,7 @@ import { getProfile, setApiKey } from "@zoralabs/coins-sdk";
  */
 const ALLOWED_ORIGINS = [
   "https://propaganda-747205.webflow.io",
-  "https://www.propaganda.now/"
+  "https://www.propaganda.now"
 ];
 
 const TARGET_HANDLE = "propaganda";
