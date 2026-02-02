@@ -116,22 +116,37 @@ async function fetchMarketCap() {
 }
 
 async function fetchFromZora() {
-  const resp = await withRetry(
-    () => withTimeout(getProfile({ identifier: TARGET_HANDLE }), TIMEOUT_MS)
-  );
+  // Try different identifier formats
+  const identifiers = [
+    TARGET_HANDLE,                           // Current: 0xfE9e...
+    TARGET_HANDLE.toLowerCase(),             // lowercase
+    { address: TARGET_HANDLE },              // Object format
+    { handle: TARGET_HANDLE },               // Named parameter
+  ];
 
-  const profile = resp?.data?.profile;
-  if (!profile) {
-    throw new Error("Profile not found");
+  let lastError;
+  for (const identifier of identifiers) {
+    try {
+      const resp = await withRetry(
+        () => withTimeout(getProfile({ identifier }), TIMEOUT_MS)
+      );
+      
+      const profile = resp?.data?.profile;
+      if (profile) {
+        console.log('Success with identifier:', identifier);
+        return {
+          handle: TARGET_HANDLE,
+          profile: profile,
+          timestamp: Date.now(),
+        };
+      }
+    } catch (e) {
+      lastError = e;
+      console.log('Failed with identifier:', identifier, e.message);
+    }
   }
-
-  // Return the entire profile object like the working example
-  // Let the frontend extract what it needs
-  return {
-    handle: TARGET_HANDLE,
-    profile: profile,  // Pass through the entire profile
-    timestamp: Date.now(),
-  };
+  
+  throw lastError || new Error("Profile not found with any identifier format");
 }
 
 function updateCache(data) {
